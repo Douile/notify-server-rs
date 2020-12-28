@@ -1,11 +1,22 @@
 // vim: ts=4 :
 
-use std::net::{SocketAddr, UdpSocket};
+use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::thread;
 use std::process::Command;
+use std::str::FromStr;
 
-use notify_rust::{Hint, Notification};
+use notify_rust::Notification;
 use serde::Deserialize;
+use structopt::StructOpt;
+
+#[derive(StructOpt)]
+struct Cli {
+    #[structopt(default_value = "1337", long, short="p")]
+    port: u16,
+
+    #[structopt(default_value = "0.0.0.0", long)]
+    address: String,
+}
 
 #[derive(Deserialize)]
 struct NotificationRequest {
@@ -21,8 +32,12 @@ fn main() -> std::io::Result<()> {
     let capabilities = notify_rust::get_capabilities().unwrap();
     println!("Notification capabilities: {:#?}", capabilities);
 
+    let args = Cli::from_args();
+
+    let ip = IpAddr::from_str(&args.address).expect("Unable to parse IP");
+
     let addrs = [
-        SocketAddr::from(([0,0,0,0], 1337)),
+        SocketAddr::new(ip, args.port),
     ];
     
     let socket = UdpSocket::bind(&addrs[..]).expect("Couldn't bind to address");
