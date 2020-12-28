@@ -11,11 +11,14 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct Cli {
-    #[structopt(default_value = "1337", long, short="p")]
+    #[structopt(default_value = "1337", long, short="p", help = "Set port to bind")]
     port: u16,
 
-    #[structopt(default_value = "0.0.0.0", long)]
+    #[structopt(default_value = "0.0.0.0", long, help = "Set address to bind")]
     address: String,
+
+    #[structopt(long, help = "Show notification server capabilities and exit")]
+    capabilities: bool,
 }
 
 #[derive(Deserialize)]
@@ -28,19 +31,22 @@ struct NotificationRequest {
 }
 
 
-fn main() -> std::io::Result<()> {
-    let capabilities = notify_rust::get_capabilities().unwrap();
-    println!("Notification capabilities: {:#?}", capabilities);
-
+fn main() -> std::io::Result<()> { 
     let args = Cli::from_args();
+
+    if args.capabilities {
+        let capabilities = notify_rust::get_capabilities().unwrap();
+        println!("Notification capabilities: {:#?}", capabilities);
+        return Ok(());
+    }
 
     let ip = IpAddr::from_str(&args.address).expect("Unable to parse IP");
 
-    let addrs = [
-        SocketAddr::new(ip, args.port),
-    ];
+    let addr = SocketAddr::new(ip, args.port);
+
+    eprintln!("Listening on {}", addr);
     
-    let socket = UdpSocket::bind(&addrs[..]).expect("Couldn't bind to address");
+    let socket = UdpSocket::bind(addr).expect("Couldn't bind to address");
     
     loop {
         let mut buf = [0;1024];
@@ -107,10 +113,3 @@ fn on_some<U>(o: Option<U>, f: impl FnOnce(U)) {
         None => {},
     };
 }
-
-/*
-    Notification::new()
-        .summary("Hello")
-        .body("Hello world")
-        .show()?;
-}*/
